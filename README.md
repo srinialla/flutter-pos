@@ -23,8 +23,9 @@ A comprehensive Point of Sale (POS) mobile application built with Flutter, featu
 - Offline indicator and sync status
 
 ### 📱 **Supported Platforms**
-- Android
-- iOS (with additional setup)
+- **Mobile**: Android, iOS
+- **Web**: Chrome, Firefox, Safari, Edge
+- **Desktop**: Windows, macOS, Linux
 
 ## Project Structure
 
@@ -87,9 +88,41 @@ The app includes placeholder Firebase configuration. For development, you can:
 # (already configured in this project)
 ```
 
-### 6. Run the App
+### 6. Enable Target Platforms
+```bash
+# Enable web support
+flutter config --enable-web
+
+# Enable desktop support
+flutter config --enable-windows-desktop
+flutter config --enable-macos-desktop  
+flutter config --enable-linux-desktop
+```
+
+### 7. Run the App
+
+**Mobile (Android/iOS):**
 ```bash
 flutter run
+```
+
+**Web:**
+```bash
+flutter run -d web-server --web-hostname localhost --web-port 8080
+# or
+flutter run -d chrome
+```
+
+**Desktop:**
+```bash
+# Windows
+flutter run -d windows
+
+# macOS  
+flutter run -d macos
+
+# Linux
+flutter run -d linux
 ```
 
 ## Firebase Configuration
@@ -139,13 +172,34 @@ The app can generate sample products for testing:
 - Go to Products screen
 - The app will prompt to add sample data if no products exist
 
+## Platform-Specific Features
+
+### Mobile (Android/iOS)
+- **Camera Barcode Scanning**: Real-time camera-based scanning
+- **Offline Storage**: Full Hive database with complete offline support
+- **Touch Gestures**: Optimized for touch interaction
+- **Bottom Navigation**: Mobile-optimized navigation pattern
+
+### Web
+- **PWA Support**: Installable Progressive Web App
+- **Manual Barcode Entry**: Text input with clipboard support
+- **Responsive Design**: Adapts to different screen sizes
+- **Keyboard Shortcuts**: Desktop-like keyboard navigation
+
+### Desktop (Windows/macOS/Linux)
+- **Window Management**: Resizable windows with native controls
+- **Navigation Rail/Drawer**: Desktop-optimized navigation
+- **Keyboard Shortcuts**: Full keyboard support
+- **Native File System**: Access to local file system for exports
+- **Multi-window Support**: Future enhancement capability
+
 ## Key Components
 
 ### Local Storage (Hive)
 - **Products**: Stored in local Hive database
 - **Sales**: Complete transaction history
 - **Settings**: App preferences and configuration
-- **Offline Mode**: Full CRUD operations work offline
+- **Offline Mode**: Full CRUD operations work offline (Mobile/Desktop only)
 
 ### Barcode Scanning
 Supported formats:
@@ -182,12 +236,36 @@ flutter test
 ```
 
 ### Building for Release
+
+**Mobile:**
 ```bash
 # Android
 flutter build apk --release
+flutter build appbundle --release  # For Google Play Store
 
 # iOS
 flutter build ios --release
+```
+
+**Web:**
+```bash
+# Build for web deployment
+flutter build web --release
+
+# Build with custom base href
+flutter build web --release --base-href "/pos-app/"
+```
+
+**Desktop:**
+```bash
+# Windows
+flutter build windows --release
+
+# macOS
+flutter build macos --release
+
+# Linux  
+flutter build linux --release
 ```
 
 ## Dependencies

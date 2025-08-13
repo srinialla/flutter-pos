@@ -7,6 +7,11 @@ import 'core/services/local_storage_service.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/sync_service.dart';
 import 'core/services/barcode_service.dart';
+import 'core/utils/platform_utils.dart';
+
+// Conditional imports for desktop
+import 'package:window_manager/window_manager.dart' if (dart.library.html) 'dart:html';
+import 'package:desktop_window/desktop_window.dart' if (dart.library.html) 'dart:html';
 
 import 'providers/auth_provider.dart';
 import 'providers/product_provider.dart';
@@ -19,16 +24,43 @@ import 'core/router/app_router.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Platform-specific initialization
+  await _initializePlatform();
+  
   // Initialize Firebase
   await FirebaseInitializer.initialize();
   
   // Initialize local storage
   await LocalStorageService.instance.init();
   
-  // Initialize barcode service
-  await BarcodeService.instance.initialize();
+  // Initialize barcode service (mobile only)
+  if (PlatformUtils.supportsBarcodeScanning) {
+    await BarcodeService.instance.initialize();
+  }
   
   runApp(const POSApp());
+}
+
+Future<void> _initializePlatform() async {
+  if (PlatformUtils.isDesktop) {
+    // Initialize desktop window
+    await windowManager.ensureInitialized();
+    
+    const windowOptions = WindowOptions(
+      size: Size(1200, 800),
+      minimumSize: Size(800, 600),
+      center: true,
+      backgroundColor: Colors.transparent,
+      skipTaskbar: false,
+      titleBarStyle: TitleBarStyle.normal,
+      windowButtonVisibility: true,
+    );
+    
+    await windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+  }
 }
 
 class POSApp extends StatelessWidget {

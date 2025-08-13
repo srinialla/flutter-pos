@@ -1,6 +1,9 @@
-import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:flutter/services.dart';
-import 'package:permission_handler/permission_handler.dart';
+import '../utils/platform_utils.dart';
+
+// Conditional imports
+import 'package:mobile_scanner/mobile_scanner.dart' if (dart.library.html) 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart' if (dart.library.html) 'dart:html';
 
 class BarcodeService {
   static BarcodeService? _instance;
@@ -17,10 +20,18 @@ class BarcodeService {
     if (_isInitialized) return true;
 
     try {
-      // Request camera permission
-      final permission = await Permission.camera.request();
-      if (permission != PermissionStatus.granted) {
+      // Only initialize scanner on mobile platforms
+      if (!PlatformUtils.supportsBarcodeScanning) {
+        print('Barcode scanning not supported on this platform');
         return false;
+      }
+
+      // Request camera permission (mobile only)
+      if (PlatformUtils.isMobile) {
+        final permission = await Permission.camera.request();
+        if (permission != PermissionStatus.granted) {
+          return false;
+        }
       }
 
       _controller = MobileScannerController(

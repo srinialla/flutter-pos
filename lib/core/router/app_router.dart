@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../services/auth_service.dart';
+import '../utils/platform_utils.dart';
 import '../../providers/auth_provider.dart';
 
 // Import screens
@@ -136,11 +137,58 @@ class MainShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: const BottomNavBar(),
-    );
+    if (PlatformUtils.shouldUseNavDrawer(context)) {
+      return ResponsiveScaffold(child: child);
+    } else if (PlatformUtils.shouldUseNavigationRail(context)) {
+      return NavigationRailLayout(child: child);
+    } else {
+      return Scaffold(
+        body: child,
+        bottomNavigationBar: const BottomNavBar(),
+      );
+    }
   }
+}
+
+// Navigation destinations
+final List<NavigationItem> navigationItems = [
+  NavigationItem(
+    icon: Icons.dashboard,
+    label: 'Dashboard',
+    route: 'dashboard',
+  ),
+  NavigationItem(
+    icon: Icons.inventory,
+    label: 'Products',
+    route: 'products',
+  ),
+  NavigationItem(
+    icon: Icons.shopping_cart,
+    label: 'Sales',
+    route: 'sales',
+  ),
+  NavigationItem(
+    icon: Icons.qr_code_scanner,
+    label: 'Scanner',
+    route: 'scanner',
+  ),
+  NavigationItem(
+    icon: Icons.settings,
+    label: 'Settings',
+    route: 'settings',
+  ),
+];
+
+class NavigationItem {
+  final IconData icon;
+  final String label;
+  final String route;
+
+  const NavigationItem({
+    required this.icon,
+    required this.label,
+    required this.route,
+  });
 }
 
 class BottomNavBar extends StatelessWidget {
@@ -151,59 +199,118 @@ class BottomNavBar extends StatelessWidget {
     final currentLocation = GoRouterState.of(context).uri.toString();
     
     int selectedIndex = 0;
-    if (currentLocation.startsWith('/products')) {
-      selectedIndex = 1;
-    } else if (currentLocation.startsWith('/sales')) {
-      selectedIndex = 2;
-    } else if (currentLocation.startsWith('/scanner')) {
-      selectedIndex = 3;
-    } else if (currentLocation.startsWith('/settings')) {
-      selectedIndex = 4;
+    for (int i = 0; i < navigationItems.length; i++) {
+      if (currentLocation.startsWith('/${navigationItems[i].route}')) {
+        selectedIndex = i;
+        break;
+      }
     }
 
     return NavigationBar(
       selectedIndex: selectedIndex,
       onDestinationSelected: (index) {
-        switch (index) {
-          case 0:
-            context.goNamed('dashboard');
-            break;
-          case 1:
-            context.goNamed('products');
-            break;
-          case 2:
-            context.goNamed('sales');
-            break;
-          case 3:
-            context.goNamed('scanner');
-            break;
-          case 4:
-            context.goNamed('settings');
-            break;
-        }
+        context.goNamed(navigationItems[index].route);
       },
-      destinations: const [
-        NavigationDestination(
-          icon: Icon(Icons.dashboard),
-          label: 'Dashboard',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.inventory),
-          label: 'Products',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.shopping_cart),
-          label: 'Sales',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.qr_code_scanner),
-          label: 'Scanner',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.settings),
-          label: 'Settings',
-        ),
-      ],
+      destinations: navigationItems.map((item) => NavigationDestination(
+        icon: Icon(item.icon),
+        label: item.label,
+      )).toList(),
+    );
+  }
+}
+
+class NavigationRailLayout extends StatelessWidget {
+  final Widget child;
+
+  const NavigationRailLayout({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final currentLocation = GoRouterState.of(context).uri.toString();
+    
+    int selectedIndex = 0;
+    for (int i = 0; i < navigationItems.length; i++) {
+      if (currentLocation.startsWith('/${navigationItems[i].route}')) {
+        selectedIndex = i;
+        break;
+      }
+    }
+
+    return Scaffold(
+      body: Row(
+        children: [
+          NavigationRail(
+            selectedIndex: selectedIndex,
+            onDestinationSelected: (index) {
+              context.goNamed(navigationItems[index].route);
+            },
+            labelType: NavigationRailLabelType.all,
+            destinations: navigationItems.map((item) => NavigationRailDestination(
+              icon: Icon(item.icon),
+              label: Text(item.label),
+            )).toList(),
+          ),
+          const VerticalDivider(thickness: 1, width: 1),
+          Expanded(child: child),
+        ],
+      ),
+    );
+  }
+}
+
+class ResponsiveScaffold extends StatelessWidget {
+  final Widget child;
+
+  const ResponsiveScaffold({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final currentLocation = GoRouterState.of(context).uri.toString();
+    
+    int selectedIndex = 0;
+    for (int i = 0; i < navigationItems.length; i++) {
+      if (currentLocation.startsWith('/${navigationItems[i].route}')) {
+        selectedIndex = i;
+        break;
+      }
+    }
+
+    return Scaffold(
+      body: Row(
+        children: [
+          NavigationDrawer(
+            selectedIndex: selectedIndex,
+            onDestinationSelected: (index) {
+              context.goNamed(navigationItems[index].route);
+            },
+            children: [
+              const DrawerHeader(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.point_of_sale, size: 48),
+                    SizedBox(height: 8),
+                    Text(
+                      'POS App',
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+              ...navigationItems.asMap().entries.map((entry) {
+                final index = entry.key;
+                final item = entry.value;
+                return NavigationDrawerDestination(
+                  icon: Icon(item.icon),
+                  label: Text(item.label),
+                );
+              }),
+            ],
+          ),
+          const VerticalDivider(thickness: 1, width: 1),
+          Expanded(child: child),
+        ],
+      ),
     );
   }
 }
