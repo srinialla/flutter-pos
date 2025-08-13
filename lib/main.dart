@@ -7,6 +7,9 @@ import 'core/services/local_storage_service.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/sync_service.dart';
 import 'core/services/barcode_service.dart';
+import 'core/services/security_service.dart';
+import 'core/services/backup_service.dart';
+import 'core/services/analytics_service.dart';
 import 'core/utils/platform_utils.dart';
 
 // Conditional imports for desktop
@@ -30,13 +33,22 @@ void main() async {
   // Initialize Firebase
   await FirebaseInitializer.initialize();
   
+  // Initialize security service first
+  await SecurityService.instance.initialize();
+  
   // Initialize local storage
   await LocalStorageService.instance.init();
+  
+  // Initialize analytics and monitoring
+  await AnalyticsService.instance.initialize();
   
   // Initialize barcode service (mobile only)
   if (PlatformUtils.supportsBarcodeScanning) {
     await BarcodeService.instance.initialize();
   }
+  
+  // Schedule auto backup
+  BackupService.instance.scheduleAutoBackup();
   
   runApp(const POSApp());
 }
