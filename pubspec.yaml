@@ -79,6 +79,15 @@ dependencies:
   csv: ^5.0.2
   excel: ^2.1.0
   
+  # Bluetooth Printing
+  blue_thermal_printer: ^1.2.4
+  flutter_bluetooth_serial: ^0.4.0
+  
+  # PDF & Email
+  mailer: ^6.0.1
+  open_file: ^3.3.2
+  share_plus: ^7.2.1
+  
   # Monitoring & Analytics
   firebase_crashlytics: ^3.4.8
   firebase_performance: ^0.9.3+8
