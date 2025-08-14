@@ -8,6 +8,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../models/product.dart';
 import '../models/sale.dart';
+import '../models/refund.dart';
 import '../utils/platform_utils.dart';
 import 'local_storage_service.dart';
 import 'auth_service.dart';
@@ -678,6 +679,157 @@ class AnalyticsService {
     }
   }
 
+  // Comprehensive Sales & Refund Analytics
+  Future<SalesAnalytics> getSalesAnalytics({
+    DateTime? startDate,
+    DateTime? endDate,
+    bool includeRefunds = true,
+  }) async {
+    try {
+      final start = startDate ?? DateTime.now().subtract(const Duration(days: 30));
+      final end = endDate ?? DateTime.now();
+
+      final sales = _localStorage.getAllSales()
+          .where((sale) => 
+              sale.createdAt.isAfter(start) && 
+              sale.createdAt.isBefore(end))
+          .toList();
+
+      final totalSales = sales.length;
+      double grossRevenue = sales.fold<double>(0, (sum, sale) => sum + sale.total);
+      double netRevenue = grossRevenue;
+      int totalRefunds = 0;
+      double totalRefundAmount = 0.0;
+      
+      // Include completed refunds as negative sales
+      if (includeRefunds) {
+        final refunds = await _getRefundsInPeriod(start, end);
+        final completedRefunds = refunds.where((r) => r.isCompleted).toList();
+        totalRefunds = completedRefunds.length;
+        totalRefundAmount = completedRefunds.fold<double>(0, (sum, refund) => sum + refund.total);
+        
+        netRevenue = grossRevenue - totalRefundAmount; // Subtract refunds from revenue
+      }
+
+      final averageSaleAmount = totalSales > 0 ? grossRevenue / totalSales : 0;
+      final refundRate = totalSales > 0 ? (totalRefunds / totalSales) * 100 : 0;
+
+      // Group sales by day
+      final dailySales = <String, SalesDayData>{};
+      for (final sale in sales) {
+        final dateKey = DateFormat('yyyy-MM-dd').format(sale.createdAt);
+        final existing = dailySales[dateKey] ?? SalesDayData(date: dateKey);
+        dailySales[dateKey] = SalesDayData(
+          date: dateKey,
+          salesCount: existing.salesCount + 1,
+          revenue: existing.revenue + sale.total,
+          refunds: existing.refunds,
+          refundAmount: existing.refundAmount,
+        );
+      }
+
+      // Add refund data to daily analytics
+      if (includeRefunds) {
+        final refunds = await _getRefundsInPeriod(start, end);
+        for (final refund in refunds.where((r) => r.isCompleted)) {
+          final dateKey = DateFormat('yyyy-MM-dd').format(refund.createdAt);
+          final existing = dailySales[dateKey] ?? SalesDayData(date: dateKey);
+          dailySales[dateKey] = SalesDayData(
+            date: dateKey,
+            salesCount: existing.salesCount,
+            revenue: existing.revenue,
+            refunds: existing.refunds + 1,
+            refundAmount: existing.refundAmount + refund.total,
+          );
+        }
+      }
+
+      return SalesAnalytics(
+        totalSales: totalSales,
+        grossRevenue: grossRevenue,
+        netRevenue: netRevenue,
+        totalRefunds: totalRefunds,
+        totalRefundAmount: totalRefundAmount,
+        averageSaleAmount: averageSaleAmount,
+        refundRate: refundRate,
+        dailySales: dailySales,
+        periodStart: start,
+        periodEnd: end,
+      );
+    } catch (e) {
+      debugPrint('Failed to get sales analytics: $e');
+      await recordError(e, StackTrace.current, 'sales_analytics_failed');
+      return SalesAnalytics.empty();
+    }
+  }
+
+  // Get refunds in a specific period
+  Future<List<RefundForAnalytics>> _getRefundsInPeriod(DateTime start, DateTime end) async {
+    try {
+      final refundsBox = await _localStorage.getBox<Map<String, dynamic>>('refunds');
+      return refundsBox.values
+          .map((data) => _parseRefund(data))
+          .where((refund) => 
+              refund != null &&
+              refund.createdAt.isAfter(start) && 
+              refund.createdAt.isBefore(end))
+          .whereType<RefundForAnalytics>()
+          .toList();
+    } catch (e) {
+      debugPrint('Failed to get refunds for analytics: $e');
+      return [];
+    }
+  }
+
+  // Helper to parse refund data for analytics
+  RefundForAnalytics? _parseRefund(Map<String, dynamic> data) {
+    try {
+      return RefundForAnalytics(
+        id: data['id'],
+        total: data['total']?.toDouble() ?? 0.0,
+        isCompleted: data['status'] == 'RefundStatus.completed',
+        createdAt: DateTime.fromMillisecondsSinceEpoch(data['createdAt']),
+        reason: data['reason'],
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Get comprehensive business metrics including refunds
+  Future<BusinessMetrics> getBusinessMetrics({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      final salesAnalytics = await getSalesAnalytics(
+        startDate: startDate,
+        endDate: endDate,
+        includeRefunds: true,
+      );
+
+      final products = _localStorage.getAllProducts();
+      final lowStockProducts = products.where((p) => p.stockQuantity <= (p.lowStockThreshold ?? 10)).length;
+      final totalInventoryValue = products.fold<double>(0, (sum, p) => sum + (p.stockQuantity * (p.cost ?? 0)));
+
+      return BusinessMetrics(
+        salesAnalytics: salesAnalytics,
+        totalProducts: products.length,
+        lowStockProducts: lowStockProducts,
+        totalInventoryValue: totalInventoryValue,
+        profitMargin: _calculateProfitMargin(salesAnalytics.netRevenue, totalInventoryValue),
+      );
+    } catch (e) {
+      debugPrint('Failed to get business metrics: $e');
+      return BusinessMetrics.empty();
+    }
+  }
+
+  double _calculateProfitMargin(double revenue, double cost) {
+    if (cost <= 0) return 0.0;
+    return ((revenue - cost) / revenue) * 100;
+  }
+
   // Cleanup
   Future<void> dispose() async {
     // Stop all active traces
@@ -691,4 +843,115 @@ class AnalyticsService {
     _activeTraces.clear();
     _isInitialized = false;
   }
+}
+
+// Supporting classes for enhanced analytics
+class SalesAnalytics {
+  final int totalSales;
+  final double grossRevenue;
+  final double netRevenue;
+  final int totalRefunds;
+  final double totalRefundAmount;
+  final double averageSaleAmount;
+  final double refundRate;
+  final Map<String, SalesDayData> dailySales;
+  final DateTime periodStart;
+  final DateTime periodEnd;
+
+  SalesAnalytics({
+    required this.totalSales,
+    required this.grossRevenue,
+    required this.netRevenue,
+    required this.totalRefunds,
+    required this.totalRefundAmount,
+    required this.averageSaleAmount,
+    required this.refundRate,
+    required this.dailySales,
+    required this.periodStart,
+    required this.periodEnd,
+  });
+
+  factory SalesAnalytics.empty() {
+    final now = DateTime.now();
+    return SalesAnalytics(
+      totalSales: 0,
+      grossRevenue: 0.0,
+      netRevenue: 0.0,
+      totalRefunds: 0,
+      totalRefundAmount: 0.0,
+      averageSaleAmount: 0.0,
+      refundRate: 0.0,
+      dailySales: {},
+      periodStart: now,
+      periodEnd: now,
+    );
+  }
+
+  double get netProfit => netRevenue; // Simplified - would include costs in real calculation
+  bool get hasRefunds => totalRefunds > 0;
+  double get refundImpact => grossRevenue > 0 ? (totalRefundAmount / grossRevenue * 100) : 0;
+}
+
+class SalesDayData {
+  final String date;
+  final int salesCount;
+  final double revenue;
+  final int refunds;
+  final double refundAmount;
+
+  SalesDayData({
+    required this.date,
+    this.salesCount = 0,
+    this.revenue = 0.0,
+    this.refunds = 0,
+    this.refundAmount = 0.0,
+  });
+
+  double get netRevenue => revenue - refundAmount;
+  double get refundRate => salesCount > 0 ? (refunds / salesCount) * 100 : 0;
+}
+
+class RefundForAnalytics {
+  final String id;
+  final double total;
+  final bool isCompleted;
+  final DateTime createdAt;
+  final String? reason;
+
+  RefundForAnalytics({
+    required this.id,
+    required this.total,
+    required this.isCompleted,
+    required this.createdAt,
+    this.reason,
+  });
+}
+
+class BusinessMetrics {
+  final SalesAnalytics salesAnalytics;
+  final int totalProducts;
+  final int lowStockProducts;
+  final double totalInventoryValue;
+  final double profitMargin;
+
+  BusinessMetrics({
+    required this.salesAnalytics,
+    required this.totalProducts,
+    required this.lowStockProducts,
+    required this.totalInventoryValue,
+    required this.profitMargin,
+  });
+
+  factory BusinessMetrics.empty() {
+    return BusinessMetrics(
+      salesAnalytics: SalesAnalytics.empty(),
+      totalProducts: 0,
+      lowStockProducts: 0,
+      totalInventoryValue: 0.0,
+      profitMargin: 0.0,
+    );
+  }
+
+  double get inventoryTurnover => totalInventoryValue > 0 ? salesAnalytics.netRevenue / totalInventoryValue : 0;
+  bool get hasInventoryIssues => lowStockProducts > 0;
 }
