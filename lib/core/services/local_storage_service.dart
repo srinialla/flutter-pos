@@ -2,6 +2,11 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/product.dart';
 import '../models/sale.dart';
+import '../models/refund.dart';
+import '../models/customer.dart';
+import '../models/supplier.dart';
+import '../models/purchase_order.dart';
+import '../models/receipt_config.dart';
 
 class LocalStorageService {
   static const String _productsBox = 'products';
@@ -24,11 +29,41 @@ class LocalStorageService {
 
     await Hive.initFlutter();
     
-    // Register adapters
+    // Register adapters for core models
     Hive.registerAdapter(ProductAdapter());
     Hive.registerAdapter(SaleAdapter());
     Hive.registerAdapter(SaleItemAdapter());
     Hive.registerAdapter(PaymentMethodAdapter());
+    
+    // Register adapters for refund system
+    Hive.registerAdapter(RefundAdapter());
+    Hive.registerAdapter(RefundItemAdapter());
+    Hive.registerAdapter(RefundAuditEntryAdapter());
+    Hive.registerAdapter(RefundReasonAdapter());
+    Hive.registerAdapter(RefundStatusAdapter());
+    Hive.registerAdapter(RefundMethodAdapter());
+    Hive.registerAdapter(RestockActionAdapter());
+    
+    // Register adapters for customer management
+    Hive.registerAdapter(CustomerAdapter());
+    Hive.registerAdapter(CustomerTypeAdapter());
+    
+    // Register adapters for supplier management
+    Hive.registerAdapter(SupplierAdapter());
+    Hive.registerAdapter(PaymentTermsAdapter());
+    Hive.registerAdapter(SupplierStatusAdapter());
+    
+    // Register adapters for purchase orders
+    Hive.registerAdapter(PurchaseOrderAdapter());
+    Hive.registerAdapter(PurchaseOrderItemAdapter());
+    Hive.registerAdapter(PurchaseOrderStatusAdapter());
+    
+    // Register adapters for receipt configuration
+    Hive.registerAdapter(ReceiptConfigAdapter());
+    Hive.registerAdapter(ReceiptTypeAdapter());
+    Hive.registerAdapter(ReceiptSizeAdapter());
+    Hive.registerAdapter(HeaderAlignmentAdapter());
+    Hive.registerAdapter(PrinterConnectionAdapter());
 
     // Open boxes
     _products = await Hive.openBox<Product>(_productsBox);
@@ -44,6 +79,10 @@ class LocalStorageService {
   }
 
   Future<void> updateProduct(Product product) async {
+    await _products.put(product.id, product);
+  }
+
+  Future<void> saveProduct(Product product) async {
     await _products.put(product.id, product);
   }
 
@@ -194,6 +233,14 @@ class LocalStorageService {
     await _products.clear();
     await _sales.clear();
     await _settings.clear();
+  }
+
+  // Generic box access for services
+  Future<Box<T>> getBox<T>(String boxName) async {
+    if (Hive.isBoxOpen(boxName)) {
+      return Hive.box<T>(boxName);
+    }
+    return await Hive.openBox<T>(boxName);
   }
 
   // Close boxes

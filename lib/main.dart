@@ -10,6 +10,12 @@ import 'core/services/barcode_service.dart';
 import 'core/services/security_service.dart';
 import 'core/services/backup_service.dart';
 import 'core/services/analytics_service.dart';
+import 'core/services/refund_service.dart';
+import 'core/services/team_sync_service.dart';
+import 'core/services/inventory_alerts_service.dart';
+import 'core/services/export_service.dart';
+import 'core/services/printer_service.dart';
+import 'core/services/notification_service.dart';
 import 'core/utils/platform_utils.dart';
 
 // Conditional imports for desktop
@@ -41,6 +47,24 @@ void main() async {
   
   // Initialize analytics and monitoring
   await AnalyticsService.instance.initialize();
+  
+  // Initialize notification service
+  await NotificationService.instance.initialize();
+  
+  // Initialize team sync service
+  await TeamSyncService.instance.initialize();
+  
+  // Initialize refund service
+  await RefundService.instance.initialize();
+  
+  // Initialize printer service
+  await PrinterService.instance.initialize();
+  
+  // Initialize export service
+  await ExportService.instance.initialize();
+  
+  // Initialize inventory alerts service
+  await InventoryAlertsService.instance.initialize();
   
   // Initialize barcode service (mobile only)
   if (PlatformUtils.supportsBarcodeScanning) {

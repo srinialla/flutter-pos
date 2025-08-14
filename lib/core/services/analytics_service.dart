@@ -5,6 +5,7 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_performance/firebase_performance.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:intl/intl.dart';
 
 import '../models/product.dart';
 import '../models/sale.dart';
