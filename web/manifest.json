@@ -1,0 +1,70 @@
+{
+    "name": "POS Flutter App",
+    "short_name": "POS App",
+    "description": "A comprehensive Point of Sale application with offline-first capabilities",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#667eea",
+    "theme_color": "#6750A4",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "categories": ["business", "productivity", "shopping"],
+    "lang": "en-US",
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "screenshots/dashboard.png",
+            "sizes": "1280x720",
+            "type": "image/png",
+            "form_factor": "wide"
+        },
+        {
+            "src": "screenshots/mobile.png",
+            "sizes": "360x640",
+            "type": "image/png",
+            "form_factor": "narrow"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Dashboard",
+            "short_name": "Dashboard",
+            "description": "View sales dashboard and overview",
+            "url": "/dashboard",
+            "icons": [
+                {
+                    "src": "icons/Icon-192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        },
+        {
+            "name": "New Sale",
+            "short_name": "Sale",
+            "description": "Start a new sale transaction",
+            "url": "/sales",
+            "icons": [
+                {
+                    "src": "icons/Icon-192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        }
+    ],
+    "related_applications": [],
+    "scope": "/",
+    "id": "pos-flutter-app"
+}
